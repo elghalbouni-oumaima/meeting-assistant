@@ -1,5 +1,0 @@
-Summarization uses facebook/bart-large-cnn, fine-tuned on the
-CNN/DailyMail dataset. The model produces abstractive summaries
-that rephrase rather than copy the original text. Minor factual
-merging can occur on short transcripts — a known limitation of
-seq2seq summarization models.
