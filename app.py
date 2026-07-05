@@ -112,9 +112,54 @@ with tab_summary:
     else:
         st.caption("Click the button above to generate a summary.")
 
-# ── Tab 2-4: placeholders for now ──────────────────────────────────────────────
+# ── Tab 2: Action items ────────────────────────────────────────────────────────
 with tab_actions:
-    st.info("🚧 Coming on Day 2 — action item extraction.")
+    st.subheader("Action items")
+    st.caption("Extracts tasks and responsible people from the transcript.")
+
+    col1, _ = st.columns([1, 3])
+    with col1:
+        run_actions = st.button("Extract action items", type="primary", use_container_width=True)
+
+    if run_actions:
+        with st.spinner("Extracting tasks... (first run downloads the model ~1 min)"):
+            from src.action_extractor import extract_actions
+            actions = extract_actions(st.session_state["transcript"])
+            st.session_state["actions"] = actions
+
+    if "actions" in st.session_state:
+        actions = st.session_state["actions"]
+        st.caption(f"{len(actions)} action item(s) found")
+        st.divider()
+
+        for i, item in enumerate(actions, 1):
+            col_check, col_text = st.columns([0.05, 0.95])
+
+            with col_check:
+                st.checkbox("", key=f"action_{i}", value=False)
+
+            with col_text:
+                st.markdown(f"**{item['task']}**")
+                if item["owner"] != "Unassigned":
+                    st.caption(f"👤 {item['owner']}")
+                else:
+                    st.caption("👤 Owner not specified")
+
+            st.divider()
+
+        # download as text file
+        action_text = "\n".join(
+            [f"[ ] {a['task']} — {a['owner']}" for a in actions]
+        )
+        st.download_button(
+            label="Download action items",
+            data=action_text,
+            file_name="action_items.txt",
+            mime="text/plain",
+            use_container_width=False,
+        )
+    else:
+        st.caption("Click the button above to extract action items.")
 
 with tab_sentiment:
     st.info("🚧 Coming on Day 3 — sentiment analysis.")
