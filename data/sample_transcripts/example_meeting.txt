@@ -1,0 +1,14 @@
+Meeting: Q3 Planning — September 5, 2024
+Attendees: Sarah (PM), John (Dev), Maria (Design)
+
+Sarah: Let's start with the Q3 roadmap. John, where are we on the API?
+John: We're about 70% done. I think we can finish by end of next week.
+Sarah: Good. Maria, can you have the new UI mockups ready by Friday?
+Maria: Yes, I'll send them Thursday actually.
+Sarah: Perfect. One issue — the client complained about response time.
+John: That's a known bug. I'll fix it by Wednesday, it's high priority.
+Sarah: Great. Also, John, please write documentation for the new endpoints.
+John: Sure, I'll do that after the API is done.
+Sarah: Maria, we also need a new logo proposal for the rebrand.
+Maria: I can have three options ready by next Monday.
+Sarah: Perfect. Let's sync again Friday at 2pm.

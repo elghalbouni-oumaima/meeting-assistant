@@ -1,0 +1,16 @@
+models:
+  summarizer: "facebook/bart-large-cnn"        # lighter than bart-large-cnn, good for dev
+  action_extractor: "google/flan-t5-large"
+
+summarizer:
+  max_input_tokens: 1024
+  max_output_tokens: 250
+  min_output_tokens: 30
+  length_penalty: 2
+  no_repeat_ngram_size: 3
+  num_beams: 4
+
+action_extractor:
+  max_input_tokens: 512
+  max_new_tokens: 200
+  num_beams: 4
