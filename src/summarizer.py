@@ -78,7 +78,7 @@ def summarize(transcript: str) -> str:
     {clean_text}
     """
     inputs = _tokenizer(
-        prompt,
+        clean_text,
         return_tensors="pt",
         truncation=True,
         max_length=PARAMS["max_input_tokens"],
@@ -86,13 +86,13 @@ def summarize(transcript: str) -> str:
 
     output = _model.generate(
         **inputs,
-        max_length=PARAMS["max_new_tokens"],
-        min_length=PARAMS["min_new_tokens"],
+        max_length=PARAMS["max_output_tokens"],
+        min_length=PARAMS["min_output_tokens"],
         length_penalty=PARAMS["length_penalty"],
         no_repeat_ngram_size=PARAMS["no_repeat_ngram_size"],
         num_beams=PARAMS["num_beams"],
-        length_penalty=2.0,                       # ← encourages longer output
         early_stopping=True,
+
     )
 
     return _tokenizer.decode(output[0], skip_special_tokens=True)

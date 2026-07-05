@@ -1,6 +1,3 @@
-Meeting: Q3 Planning — September 5, 2024
-Attendees: Sarah (PM), John (Dev), Maria (Design)
-
 Sarah: Let's start with the Q3 roadmap. John, where are we on the API?
 John: We're about 70% done. I think we can finish by end of next week.
 Sarah: Good. Maria, can you have the new UI mockups ready by Friday?
