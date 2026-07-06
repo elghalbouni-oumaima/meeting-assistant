@@ -1,6 +1,8 @@
 models:
   summarizer: "facebook/bart-large-cnn"        # lighter than bart-large-cnn, good for dev
   action_extractor: "google/flan-t5-large"
+  sentiment: "cardiffnlp/twitter-roberta-base-sentiment-latest"
+
 
 summarizer:
   max_input_tokens: 1024

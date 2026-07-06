@@ -6,7 +6,9 @@ Run with: streamlit run app.py
 
 import streamlit as st
 import yaml
-
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 # ── page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="AI Meeting Assistant",
@@ -162,8 +164,90 @@ with tab_actions:
     else:
         st.caption("Click the button above to extract action items.")
 
+# ── Tab 3: Sentiment ───────────────────────────────────────────────────────────
 with tab_sentiment:
-    st.info("🚧 Coming on Day 3 — sentiment analysis.")
+    st.subheader("Sentiment analysis")
+    st.caption("Analyzes the emotional tone of the meeting per speaker.")
+
+    col1, _ = st.columns([1, 3])
+    with col1:
+        run_sentiment = st.button(
+            "Analyze sentiment", type="primary", use_container_width=True
+        )
+
+    if run_sentiment:
+        with st.spinner("Analyzing sentiment..."):
+            from src.sentiment import analyze
+            result = analyze(st.session_state["transcript"])
+            st.session_state["sentiment"] = result
+
+    if "sentiment" in st.session_state:
+        result   = st.session_state["sentiment"]
+        overall  = result["overall"]
+        speakers = result["by_speaker"]
+        turns    = result["turns"]
+
+        # ── overall metric ─────────────────────────────────────────────
+        st.divider()
+        emoji_map = {"POSITIVE": "😊", "NEGATIVE": "😟", "NEUTRAL": "😐"}
+        emoji     = emoji_map.get(overall["label"], "😐")
+        col_m, col_chart = st.columns([1, 2])
+        with col_m:
+            st.metric(
+                label="Overall meeting tone",
+                value=f"{emoji} {overall['label'].capitalize()}",
+                delta=f"{overall['score']}% of turns",
+            )
+
+        # ── per-speaker bar chart ──────────────────────────────────────
+        if speakers:
+            with col_chart:
+                matplotlib.use("Agg")
+                names     = list(speakers.keys())
+                pos_vals  = [speakers[n].get("POSITIVE", 0) for n in names]
+                neu_vals  = [speakers[n].get("NEUTRAL",  0) for n in names]
+                neg_vals  = [speakers[n].get("NEGATIVE", 0) for n in names]
+                x         = np.arange(len(names))
+                width     = 0.25
+
+                fig, ax = plt.subplots(figsize=(5, 2.8))
+                ax.bar(x - width,     pos_vals, width, label="Positive", color="#22c55e")
+                ax.bar(x,             neu_vals, width, label="Neutral",  color="#94a3b8")
+                ax.bar(x + width,     neg_vals, width, label="Negative", color="#ef4444")
+
+                ax.set_xticks(x)
+                ax.set_xticklabels(names, fontsize=10)
+                ax.set_ylabel("Turns", fontsize=9)
+                ax.set_title("Sentiment by speaker", fontsize=10)
+                ax.legend(fontsize=9)
+                ax.spines[["top", "right"]].set_visible(False)
+                plt.tight_layout()
+
+                st.pyplot(fig)
+                plt.close(fig)
+        # ── turn by turn breakdown ─────────────────────────────────────
+        st.divider()
+        st.caption("Turn-by-turn breakdown")
+
+        for turn in turns:
+            icon_map = {"POSITIVE": "🟢", "NEGATIVE": "🔴", "NEUTRAL": "🟡"}
+            icon     = icon_map.get(turn["label"], "⚪")
+            col_a, col_b = st.columns([0.05, 0.95])
+
+            with col_a:
+                st.write(icon)
+            with col_b:
+                st.markdown(
+                    f"**{turn['speaker']}** — {turn['text'][:80]}"
+                    f"{'...' if len(turn['text']) > 80 else ''}"
+                )
+                st.caption(
+                    f"{turn['label'].capitalize()} · {turn['score']}% confidence"
+                )
+
+    else:
+        st.caption("Click the button above to analyze sentiment.")
+
 
 with tab_qa:
     st.info("🚧 Coming on Day 4 — RAG-powered Q&A.")
