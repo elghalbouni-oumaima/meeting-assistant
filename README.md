@@ -32,15 +32,26 @@ streamlit run app.py
 
 ## Project structure
         meeting-assistant/
-        ├── app.py                  ← Streamlit UI
+        ├── data/
+        │   └── sample_transcripts/
+        │       └── example_meeting.txt
+        ├── notebooks/                     for experiments
         ├── src/
+        │   ├── __init__.py
         │   ├── summarizer.py
         │   ├── action_extractor.py
         │   ├── sentiment.py
         │   └── rag.py
-        ├── config/config.yaml      ← all model names and params
-        ├── data/sample_transcripts/
-        └── requirements.txt
+        ├── reports/
+        │   └── figures/                  ← charts saved here
+        ├── config/
+        │   └── config.yaml               ← model names, params (no hardcoded values)
+        ├── tests/
+        │   └── test_summarizer.py
+        ├── app.py                        ← Streamlit entry point
+        ├── requirements.txt
+        ├── README.md
+        └── .gitignore
 
 ## Limitations
 - Action extraction relies on English keywords and "Name: text" format
