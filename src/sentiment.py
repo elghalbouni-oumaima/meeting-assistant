@@ -12,6 +12,10 @@ from transformers import (
     AutoModelForSequenceClassification,
 )
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 with open("config/config.yaml") as f:
     CONFIG = yaml.safe_load(f)
 
@@ -25,7 +29,7 @@ _model     = None
 def _load():
     global _tokenizer, _model
     if _tokenizer is None:
-        print(f"DEBUG — loading sentiment model: {MODEL_NAME}")
+        logger.info(f"Loading model: {MODEL_NAME}")
         _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
         _model     = AutoModelForSequenceClassification.from_pretrained(
             MODEL_NAME

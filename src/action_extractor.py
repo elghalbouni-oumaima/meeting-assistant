@@ -9,6 +9,9 @@ import re
 import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 with open("config/config.yaml") as f:
     CONFIG = yaml.safe_load(f)
@@ -34,7 +37,7 @@ ACTION_KEYWORDS = [
 def _load():
     global _tokenizer, _model
     if _tokenizer is None:
-        print(f"DEBUG — loading: {MODEL_NAME}")
+        logger.info(f"Loading model: {MODEL_NAME}")
         _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
         _model     = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME).to(DEVICE)
 
@@ -195,9 +198,7 @@ def extract_actions(transcript: str) -> list[dict]:
     Main function — returns list of {"task": str, "owner": str}
     """
     raw_actions = _rule_based_extract(transcript)
-    print(f"DEBUG — found {len(raw_actions)} raw actions")
-    for a in raw_actions:
-        print(f"  {a['speaker']}: {a['raw_text']}")
+    logger.info(f"found {len(raw_actions)} raw actions")   
 
     if not raw_actions:
         return [{"task": "No clear action items found in transcript.", "owner": "—"}]

@@ -17,6 +17,9 @@ import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 with open("config/config.yaml") as f:
     CONFIG = yaml.safe_load(f)
@@ -33,7 +36,7 @@ _model     = None
 def _load_embedder():
     global _embedder
     if _embedder is None:
-        print(f"DEBUG — loading embedder: {RAG_CONFIG['embedder']}")
+        logger.info(f" loading embedder: {RAG_CONFIG['embedder']}")
         _embedder = SentenceTransformer(RAG_CONFIG["embedder"])
 
 
@@ -41,7 +44,7 @@ def _load_generator():
     global _tokenizer, _model
     if _tokenizer is None:
         model_name = CONFIG["models"]["action_extractor"]  # reuse flan-t5-large
-        print(f"DEBUG — loading RAG generator: {model_name}")
+        logger.info(f"Loading RAG generator:: {model_name}")
         _tokenizer = AutoTokenizer.from_pretrained(model_name)
         _model     = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(DEVICE)
 
@@ -81,7 +84,6 @@ def _chunk(transcript: str) -> list[dict]:
         chunks.append({"text": chunk, "index": len(chunks)})
         start += chunk_size - overlap
 
-    print(f"DEBUG — created {len(chunks)} chunks")
     return chunks
 
 
@@ -104,8 +106,7 @@ def build_index(transcript: str) -> tuple:
     dim   = vectors.shape[1]
     index = faiss.IndexFlatL2(dim)
     index.add(vectors)
-
-    print(f"DEBUG — FAISS index built: {index.ntotal} vectors, dim={dim}")
+    logger.info(f"FAISS index built: {index.ntotal} vectors, dim={dim}")
     return chunks, index
 
 
@@ -129,7 +130,6 @@ def retrieve(query: str, chunks: list, index, top_k: int = 3) -> list[str]:
                 "distance": float(dist),
             })
 
-    print(f"DEBUG — retrieved {len(results)} chunks for: '{query}'")
     return results
 
 
@@ -176,8 +176,6 @@ Answer:"""
     )
 
     response = _tokenizer.decode(output[0], skip_special_tokens=True)
-    print(f"DEBUG — RAG answer: {response}")
-
     return {
         "answer" : response,
         "context": [r["text"] for r in retrieved],

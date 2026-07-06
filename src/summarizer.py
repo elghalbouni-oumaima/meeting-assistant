@@ -7,6 +7,9 @@ import re
 import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 with open("config/config.yaml") as f:
     CONFIG = yaml.safe_load(f)
@@ -56,8 +59,7 @@ def summarize(transcript: str) -> str:
     Preprocesses the transcript before sending to BART.
     """
     _load()
-    print(f"DEBUG — using model: {MODEL_NAME}")   # ← add this line
-    print(f"DEBUG — transcript length: {len(transcript)} chars")
+    logger.info(f"Loading model: {MODEL_NAME}")
     # clean the transcript first
     clean_text = _preprocess(transcript)
     prompt = f"""
