@@ -136,7 +136,7 @@ with tab_actions:
             col_check, col_text = st.columns([0.05, 0.95])
 
             with col_check:
-                st.checkbox("", key=f"action_{i}", value=False)
+                st.checkbox("Done", key=f"action_{i}", value=False, label_visibility="hidden")
 
             with col_text:
                 st.markdown(f"**{item['task']}**")
@@ -158,6 +158,7 @@ with tab_actions:
             mime="text/plain",
             use_container_width=False,
         )
+
     else:
         st.caption("Click the button above to extract action items.")
 

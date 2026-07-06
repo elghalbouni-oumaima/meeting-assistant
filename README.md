@@ -18,3 +18,4 @@ flan-t5 reads the transcript
 Returns a list of tasks + who is responsible
         ↓
 Displayed as a clean checklist in Streamlit
+Action item extraction uses a rule-based approach combined with keyword matching. It works reliably for structured meetings where speakers use first-person commitments ('I'll', 'I will', 'I can'). Third-person assignments and informal language are partially supported. A limitation of this approach is its dependency on consistent speaker formatting and English-language action keywords.
