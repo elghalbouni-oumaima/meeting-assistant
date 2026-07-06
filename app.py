@@ -83,7 +83,7 @@ if "transcript" in st.session_state and st.session_state["transcript"].strip():
             st.session_state["rag_index"]      = index
             st.session_state["rag_transcript"] = current
 
-transcript = st.session_state["transcript"]
+    transcript = st.session_state["transcript"]
 
 # ── tabs (Day 1: only Summary tab, others coming soon) ─────────────────────────
 tab_summary, tab_actions, tab_sentiment, tab_qa = st.tabs([
