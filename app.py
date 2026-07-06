@@ -72,10 +72,16 @@ with st.sidebar:
     st.divider()
     st.caption(f"Model: `{CONFIG['models']['summarizer']}`")
 
-# ── guard — no transcript yet ──────────────────────────────────────────────────
-if "transcript" not in st.session_state or not st.session_state["transcript"].strip():
-    st.info("👈 Upload or paste a meeting transcript in the sidebar to get started.")
-    st.stop()
+# ── build RAG index whenever transcript changes ────────────────────────────────
+if "transcript" in st.session_state and st.session_state["transcript"].strip():
+    current = st.session_state["transcript"]
+    if st.session_state.get("rag_transcript") != current:
+        with st.spinner("Indexing transcript for Q&A..."):
+            from src.rag import build_index
+            chunks, index = build_index(current)
+            st.session_state["rag_chunks"]     = chunks
+            st.session_state["rag_index"]      = index
+            st.session_state["rag_transcript"] = current
 
 transcript = st.session_state["transcript"]
 
@@ -249,5 +255,77 @@ with tab_sentiment:
         st.caption("Click the button above to analyze sentiment.")
 
 
+# ── Tab 4: Q&A ─────────────────────────────────────────────────────────────────
 with tab_qa:
-    st.info("🚧 Coming on Day 4 — RAG-powered Q&A.")
+    st.subheader("Ask a question about this meeting")
+    st.caption("Powered by RAG — retrieves relevant parts of the transcript before answering.")
+
+    # suggested questions as quick-click buttons
+    st.markdown("**Try asking:**")
+    col_q1, col_q2, col_q3 = st.columns(3)
+
+    suggested = [
+        "Who is responsible for the API?",
+        "When is the next sync meeting?",
+        "What did the client complain about?",
+    ]
+
+    clicked_suggestion = None
+    with col_q1:
+        if st.button(suggested[0], use_container_width=True):
+            clicked_suggestion = suggested[0]
+    with col_q2:
+        if st.button(suggested[1], use_container_width=True):
+            clicked_suggestion = suggested[1]
+    with col_q3:
+        if st.button(suggested[2], use_container_width=True):
+            clicked_suggestion = suggested[2]
+
+    # text input — pre-filled with suggestion if clicked
+    question = st.text_input(
+        "Your question",
+        value=clicked_suggestion or "",
+        placeholder="e.g. Who will fix the response time bug?",
+    )
+
+    col_ask, _ = st.columns([1, 3])
+    with col_ask:
+        ask = st.button("Get answer", type="primary", use_container_width=True)
+
+    if ask and question.strip():
+        if "rag_chunks" not in st.session_state:
+            st.warning("Transcript not indexed yet — please wait a moment and try again.")
+        else:
+            with st.spinner("Searching the transcript..."):
+                from src.rag import answer as rag_answer
+                result = rag_answer(
+                    question,
+                    st.session_state["rag_chunks"],
+                    st.session_state["rag_index"],
+                )
+                st.session_state["qa_result"]   = result
+                st.session_state["qa_question"] = question
+
+    # display result
+    if "qa_result" in st.session_state:
+        st.divider()
+        st.markdown(f"**Q: {st.session_state['qa_question']}**")
+
+        ans = st.session_state["qa_result"]["answer"]
+        if "not discussed" in ans.lower():
+            st.warning(f"🤷 {ans}")
+        else:
+            st.success(f"💬 {ans}")
+
+        with st.expander("View retrieved context"):
+            for i, chunk in enumerate(
+                st.session_state["qa_result"]["context"], 1
+            ):
+                st.markdown(f"**Chunk {i}:**")
+                st.text(chunk)
+                st.divider()
+
+    elif ask and not question.strip():
+        st.warning("Please type a question first.")
+    else:
+        st.caption("Type a question above and click Get answer.")
