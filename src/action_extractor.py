@@ -54,78 +54,62 @@ def _parse_conversation(transcript):
         if not line:
             continue
 
-        if any(line.lower().startswith(k) for k in
-               ["meeting:", "attendees:", "date:", "location:"]):
+        if any(line.lower().startswith(k)
+               for k in ["meeting:", "attendees:", "date:", "location:"]):
             continue
 
         m = re.match(r"^([A-Za-z]+):\s*(.+)$", line)
 
-        if m:
-            conversation.append({
-                "speaker": m.group(1),
-                "text": m.group(2)
-            })
+        if not m:
+            continue
+
+        conversation.append({
+            "speaker": m.group(1),
+            "text": m.group(2)
+        })
 
     return conversation
 def _rule_based_extract(transcript: str) -> list[dict]:
     """
     Finds lines where a speaker makes a commitment.
     """
-    actions     = []
-    speakers    = _extract_speakers(transcript)
-    seen_lines  = set()
+    actions      = []
+    speakers     = _extract_speakers(transcript)
+    seen_lines   = set()
+    conversation = _parse_conversation(transcript)
 
-    lines = transcript.splitlines()
-    
-    for i, line in enumerate(lines):
-        line = line.strip()
-        if not line:
-            continue
-
-        # skip metadata
-        if any(line.lower().startswith(k) for k in
-               ["meeting:", "attendees:", "date:", "location:"]):
-            continue
-
-        speaker_match = re.match(r"^([A-Za-z]+):\s*(.+)$", line)
-        if not speaker_match:
-            continue
-
-        current_speaker = speaker_match.group(1)
-        text            = speaker_match.group(2).strip()
-        text_lower      = text.lower()
+    for i, turn in enumerate(conversation):
+        speaker    = turn["speaker"]
+        text       = turn["text"]
+        text_lower = text.lower()
 
         # skip short filler lines
         if len(text.split()) < 4:
             continue
 
-        # check for action keyword
+        # check for action keyword in this turn
         if any(kw in text_lower for kw in ACTION_KEYWORDS):
             if text not in seen_lines:
                 seen_lines.add(text)
 
-                # get previous speaker line for context if text is vague
+                # get previous turn text for context (resolves vague "them/it")
                 context = ""
                 if i > 0:
-                    prev = lines[i - 1].strip()
-                    prev_match = re.match(r"^([A-Za-z]+):\s*(.+)$", prev)
-                    if prev_match:
-                        context = prev_match.group(2).strip()
+                    context = conversation[i - 1]["text"]
 
                 actions.append({
-                    "speaker" : current_speaker,
+                    "speaker" : speaker,
                     "raw_text": text,
                     "context" : context,
                 })
 
-        # "please, Name, do X" pattern — task assigned TO someone else
+        # "please Name do X" — task assigned TO someone else
         please_match = re.search(
             r"(?:please[,\s]+)?([A-Za-z]+)[,\s]+please\s+(.+)|"
             r"please\s+([A-Za-z]+)[,\s]+(.+)",
             text, re.IGNORECASE
         )
         if please_match:
-            # figure out which group matched
             if please_match.group(1) and please_match.group(2):
                 assigned_to = please_match.group(1)
                 task_text   = please_match.group(2).strip()
@@ -133,13 +117,12 @@ def _rule_based_extract(transcript: str) -> list[dict]:
                 assigned_to = please_match.group(3)
                 task_text   = please_match.group(4).strip()
 
-            # only add if assigned_to is a real speaker
             if assigned_to in speakers and task_text not in seen_lines:
                 seen_lines.add(task_text)
                 actions.append({
                     "speaker" : assigned_to,
                     "raw_text": task_text,
-                    "context" : "",
+                    "context" : text,
                 })
 
     return actions
@@ -148,27 +131,37 @@ def _rule_based_extract(transcript: str) -> list[dict]:
 def _clean_task(raw_text: str, context: str = "") -> str:
     """
     Converts first-person commitment to a clean task description.
-    Uses context from the previous line to fill in vague pronouns.
     """
     text = raw_text.strip()
 
-    # remove leading filler phrases before the actual commitment
-    filler_patterns = [
-        r"^(that'?s?\s+\w+\s+\w+\.?\s*)",   # "That's a known bug."
-        r"^(great\.?\s*)",                    # "Great."
-        r"^(sure,?\s*)",                      # "Sure,"
-        r"^(okay\.?\s*)",                     # "Okay."
-        r"^(yes,?\s*)",                       # "Yes,"
-        r"^(also,?\s*[A-Za-z]+,?\s*)",        # "Also, John,"
+    # ── remove leading filler before the real commitment ──────────────
+    filler_start = [
+        r"^that'?s?\s+\w+[\s\w]*\.\s*",    # "That's a known bug."
+        r"^[\w]+\.\s+",                      # "Bug. " or any "Word. "
+        r"^great\.?\s*",
+        r"^sure,?\s*",
+        r"^okay\.?\s*",
+        r"^yes,?\s*",
+        r"^also,?\s*[A-Za-z]+,?\s*",         # "Also, John,"
     ]
-    for pattern in filler_patterns:
+    for pattern in filler_start:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE).strip()
 
-    # replace vague pronoun "them" with context if available
+    # ── remove trailing filler words ───────────────────────────────────
+    filler_end = [
+        r",?\s*actually\.?$",               # "...Thursday actually"
+        r",?\s*though\.?$",
+        r",?\s*then\.?$",
+        r",?\s*so\.?$",
+    ]
+    for pattern in filler_end:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE).strip()
+
+    # ── replace vague pronouns using context ───────────────────────────
     if context and re.search(r"\bthem\b|\bit\b", text, re.IGNORECASE):
-        # extract the object from context (what was asked)
         obj_match = re.search(
-            r"(?:have|get|send|prepare|finish|complete)\s+(?:the\s+)?(.+?)(?:\s+ready|\s+by|\?|$)",
+            r"(?:have|get|send|prepare|finish|complete)\s+(?:the\s+)?(.+?)"
+            r"(?:\s+ready|\s+by|\?|$)",
             context, re.IGNORECASE
         )
         if obj_match:
@@ -176,21 +169,21 @@ def _clean_task(raw_text: str, context: str = "") -> str:
             text = re.sub(r"\bthem\b", obj, text, flags=re.IGNORECASE)
             text = re.sub(r"\bit\b",   obj, text, flags=re.IGNORECASE)
 
-    # convert first-person → imperative
+    # ── convert first-person → imperative ─────────────────────────────
     replacements = [
-        (r"^I'll\s+",            "",      re.IGNORECASE),
-        (r"^I will\s+",          "",      re.IGNORECASE),
-        (r"^I can\s+",           "",      re.IGNORECASE),
-        (r"^Sure,?\s+I'll\s+",   "",      re.IGNORECASE),
-        (r"^Yes,?\s+I will\s+",  "",      re.IGNORECASE),
-        (r"\bI'll\b",            "will",  re.IGNORECASE),
-        (r"\bI will\b",          "will",  re.IGNORECASE),
-        (r"\bmy\b",              "their", re.IGNORECASE),
+        (r"^I'll\s+",           "",      re.IGNORECASE),
+        (r"^I will\s+",         "",      re.IGNORECASE),
+        (r"^I can\s+",          "",      re.IGNORECASE),
+        (r"^Sure,?\s+I'll\s+",  "",      re.IGNORECASE),
+        (r"^Yes,?\s+I will\s+", "",      re.IGNORECASE),
+        (r"\bI'll\b",           "will",  re.IGNORECASE),
+        (r"\bI will\b",         "will",  re.IGNORECASE),
+        (r"\bmy\b",             "their", re.IGNORECASE),
     ]
     for pattern, replacement, flags in replacements:
         text = re.sub(pattern, replacement, text, flags=flags)
 
-    # capitalize first letter
+    # ── final cleanup ──────────────────────────────────────────────────
     text = text.strip(" .,")
     if text:
         text = text[0].upper() + text[1:]
